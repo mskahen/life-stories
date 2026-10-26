@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tell Me a Story</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+  /* Layout: one centered column; question, then the red record button, then earlier questions. */
+  :root {
+    color-scheme: light dark;
+    --bg: #f2f5f7;
+    --card: #ffffff;
+    --ink: #14232e;
+    --muted: #4a5d6a;
+    --line: #ccd7de;
+    --accent: #0e5a68;
+    --accent-ink: #ffffff;
+    --rec: #c62828;
+    --rec-ink: #ffffff;
+    --ok: #1b6b35;
+    --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --font-body: "Atkinson Hyperlegible", "Segoe UI", Verdana, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1a21; --card: #17252e; --ink: #eef3f6; --muted: #aebdc7;
+      --line: #2c3f4b; --accent: #7cc7d4; --accent-ink: #0b1a20;
+      --rec: #e53935; --ok: #7fd49a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 22px;
+    line-height: 1.55;
+    padding-block: 32px 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  main { max-width: 44rem; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+  header p { margin: 0; color: var(--muted); font-size: 1.05rem; }
+  h1 { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; margin: 0 0 4px; text-wrap: balance; }
+  .today, .recorder, .past { background: var(--card); border: 2px solid var(--line); border-radius: 16px; }
+  .today { padding: 28px 24px 32px; }
+  .label { font-size: 1rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin: 0 0 14px; }
+  .question { font-family: var(--font-display); font-weight: 600; font-size: 2.1rem; line-height: 1.25; margin: 0; text-wrap: balance; }
+  .nudge { margin: 20px 0 0; color: var(--muted); font-size: 1.05rem; }
+
+  .recorder { padding: 28px 24px; display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center; }
+  .rec-btn {
+    width: 168px; height: 168px; border-radius: 50%; padding: 0; min-height: 0;
+    background: var(--rec); color: var(--rec-ink); border: 8px solid var(--card);
+    box-shadow: 0 0 0 4px var(--rec); font-size: 1.3rem; letter-spacing: 0.02em;
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 6px;
+  }
+  .rec-btn .stop-icon { width: 38px; height: 38px; background: var(--rec-ink); border-radius: 6px; display: none; }
+  .rec-btn[data-mode="recording"] .stop-icon { display: block; }
+  .rec-btn[data-mode="recording"] { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 4px var(--rec); } 50% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--rec) 35%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { .rec-btn[data-mode="recording"] { animation: none; } }
+  .timer { font-variant-numeric: tabular-nums; font-size: 2rem; font-weight: 700; margin: 0; }
+  .status { margin: 0; color: var(--muted); font-size: 1.05rem; max-width: 30rem; }
+  .status.ok { color: var(--ok); font-weight: 700; }
+  .status.err { color: var(--rec); font-weight: 700; }
+  audio { width: 100%; max-width: 30rem; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; width: 100%; }
+
+  button, .btn {
+    font: inherit; font-weight: 700; min-height: 56px; padding: 0 22px; border-radius: 10px; cursor: pointer;
+    background: var(--accent); color: var(--accent-ink); border: 2px solid var(--accent);
+    display: inline-flex; align-items: center; justify-content: center; text-decoration: none;
+  }
+  button.quiet, .btn.quiet { background: transparent; color: var(--accent); }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button:focus-visible, .btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+  .past { padding: 20px 24px; }
+  .past h2 { font-family: var(--font-display); font-size: 1.25rem; margin: 0 0 10px; }
+  .past ul { list-style: none; margin: 14px 0 0; padding: 0; border-top: 1px solid var(--line); }
+  .past li { padding: 12px 0; border-bottom: 1px solid var(--line); display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+  .past .d { flex: none; min-width: 4.6em; color: var(--muted); font-weight: 700; }
+  .past .q { flex: 1 1 14rem; min-width: 0; }
+  .past li button { min-height: 44px; font-size: 1rem; padding: 0 16px; }
+  @media (max-width: 480px) {
+    body { font-size: 20px; }
+    .question { font-size: 1.75rem; }
+    .today, .recorder { padding: 22px 18px 26px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Tell Me a Story</h1>
+    <p id="dateLine"></p>
+  </header>
+
+  <section class="today" aria-live="polite">
+    <p class="label" id="dayLabel"></p>
+    <p class="question" id="question"></p>
+    <p class="nudge">There are no wrong answers. Take as long as you like.</p>
+  </section>
+
+  <section class="recorder" aria-label="Record your answer">
+    <button class="rec-btn" id="recBtn" type="button" data-mode="idle">
+      <span class="stop-icon" aria-hidden="true"></span>
+      <span id="recBtnText">Record</span>
+    </button>
+    <p class="timer" id="timer" aria-hidden="true">0:00</p>
+    <p class="status" id="status" role="status" aria-live="polite">Press the red button and start talking. Tap Allow if your phone asks to use the microphone.</p>
+    <audio id="player" controls hidden></audio>
+    <div class="actions" id="actions" hidden>
+      <button type="button" id="saveBtn">Save my answer</button>
+      <button type="button" class="quiet" id="againBtn">Record again</button>
+      <a class="btn quiet" id="dlLink" href="#" hidden>Keep a copy on my phone</a>
+    </div>
+  </section>
+
+  <section class="past" id="pastSection">
+    <h2>Earlier questions</h2>
+    <button class="quiet" id="toggle" type="button" aria-expanded="false" aria-controls="pastList">Show earlier questions</button>
+    <ul id="pastList" hidden></ul>
+  </section>
+</main>
+
+<script>
+  // Set this to the Web app URL from Google Apps Script (see README.md).
+  var UPLOAD_URL = "PASTE_APPS_SCRIPT_URL_HERE";
+
+  // Day 1 is the first day the page was shared. Change START to move every question.
+  var START = { y: 2026, m: 10, d: 26 };
+
+  var QUESTIONS = [
+    "Where were you born, and what is your earliest memory of that place?",
+    "Tell me about the house you grew up in. What did it look and smell like?",
+    "Who were your parents? Tell me what each of them was like.",
+    "What were your brothers and sisters like when you were young?",
+    "What did your family eat for dinner when you were a child? Who cooked?",
+    "What was your favorite thing to do as a child?",
+    "Tell me about your best friend growing up.",
+    "What was school like for you? Tell me about a teacher you remember.",
+    "What chores did you have as a child?",
+    "Tell me about a time you got into trouble as a kid.",
+    "What did your family do for fun on weekends?",
+    "How did your family celebrate Christmas or other holidays when you were small?",
+    "Tell me about your grandparents. What do you remember about them?",
+    "What was the neighborhood like where you grew up?",
+    "What was the scariest moment of your childhood?",
+    "What did you want to be when you grew up?",
+    "What were your teenage years like? What music did you love?",
+    "Tell me about your first job.",
+    "Tell me about the first time you drove a car.",
+    "Who was the first person you had a crush on?",
+    "Tell me about your high school years. What would surprise me?",
+    "What big decision did you make as a young adult that changed your life?",
+    "How did you meet Dad? What did you think of him at first?",
+    "Tell me about your wedding day.",
+    "Where did you live when you were first married? What was it like?",
+    "What was it like when you found out you were going to be a mom?",
+    "Tell me about the day I was born.",
+    "What was I like as a baby?",
+    "What was the hardest part of raising children?",
+    "What was the best part of raising children?",
+    "Tell me about a funny thing one of your kids did.",
+    "What traditions did you start in our family?",
+    "Tell me about a family vacation you remember well.",
+    "What jobs did you have over the years? Which did you enjoy most?",
+    "What did you learn from the people you worked with?",
+    "What was the proudest moment of your working life?",
+    "What was the hardest time in your life, and how did you get through it?",
+    "Tell me about someone who helped you when you really needed it.",
+    "What did your faith mean to you at different times of your life?",
+    "Tell me about a time you were afraid and did something anyway.",
+    "What historical events do you remember living through? Where were you?",
+    "How has the world changed most since you were young?",
+    "What is the best meal you ever had? Where was it, and who was with you?",
+    "What recipe do you wish everyone in the family would keep making?",
+    "Tell me about a place you have traveled to that you will never forget.",
+    "Where would you still like to go, if you could go anywhere?",
+    "Who has been the most important friend in your adult life?",
+    "What is something you did that you never thought you would?",
+    "What is something you wish you had done differently?",
+    "What are you proudest of in your life?",
+    "What did you love most about being a grandmother?",
+    "What do you hope your grandchildren know about you?",
+    "What advice would you give to someone just starting out in life?",
+    "What did you learn about marriage over the years?",
+    "What makes a good friend?",
+    "What are you most thankful for today?",
+    "What is a small thing that makes you happy?",
+    "What would you like the family to remember about Dad?",
+    "What do you hope for each of your children?",
+    "If you could tell your younger self one thing, what would it be?",
+    "What do you want people to remember about you?"
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var total = QUESTIONS.length;
+  var qFor = function (d) { return QUESTIONS[(d - 1) % total]; };
+
+  function todayNumber() {
+    var n = new Date();
+    var today = Date.UTC(n.getFullYear(), n.getMonth(), n.getDate());
+    var start = Date.UTC(START.y, START.m - 1, START.d);
+    return Math.max(1, Math.floor((today - start) / 86400000) + 1);
+  }
+
+  var todayDay = todayNumber();
+  var day = todayDay;           // the day being answered
+  var mode = "idle";            // idle | recording | review | saving | saved
+  var recorder = null, stream = null, chunks = [], blob = null, mime = "";
+  var tickId = null, startedAt = 0, wakeLock = null, objectUrl = null;
+
+  function setStatus(text, cls) {
+    var s = $("status");
+    s.textContent = text;
+    s.className = "status" + (cls ? " " + cls : "");
+  }
+
+  function fmt(sec) {
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  function setMode(m) {
+    mode = m;
+    var btn = $("recBtn");
+    btn.dataset.mode = m;
+    btn.disabled = (m === "saving");
+    $("recBtnText").textContent = m === "recording" ? "Stop" : "Record";
+    var review = (m === "review" || m === "saving" || m === "saved");
+    $("player").hidden = !review;
+    $("actions").hidden = !review;
+    $("saveBtn").disabled = (m === "saving" || m === "saved");
+    $("againBtn").disabled = (m === "saving");
+    $("saveBtn").textContent = m === "saved" ? "Saved" : "Save my answer";
+  }
+
+  function renderQuestion() {
+    $("dateLine").textContent =
+      new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    $("dayLabel").textContent = day === todayDay ? "Question for Day " + day : "Question from Day " + day;
+    $("question").textContent = qFor(day);
+  }
+
+  function pickMime() {
+    var options = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+    if (!window.MediaRecorder) return "";
+    for (var i = 0; i < options.length; i++) {
+      if (MediaRecorder.isTypeSupported(options[i])) return options[i];
+    }
+    return "";
+  }
+
+  function extFor(type) {
+    if (type.indexOf("mp4") > -1) return "m4a";
+    if (type.indexOf("ogg") > -1) return "ogg";
+    return "webm";
+  }
+
+  function stamp() {
+    var n = new Date();
+    var p = function (v) { return (v < 10 ? "0" : "") + v; };
+    return n.getFullYear() + "-" + p(n.getMonth() + 1) + "-" + p(n.getDate()) + " " + p(n.getHours()) + p(n.getMinutes());
+  }
+
+  function fileName() {
+    var d = day < 10 ? "0" + day : "" + day;
+    return "Day " + d + " - " + stamp() + "." + extFor(mime);
+  }
+
+  async function holdScreenOn() {
+    try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
+  }
+  function releaseScreen() {
+    try { if (wakeLock) wakeLock.release(); } catch (e) {}
+    wakeLock = null;
+  }
+
+  async function startRecording() {
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      setStatus("This browser cannot record. Please open this page in Chrome.", "err");
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      setStatus("The microphone is blocked. Tap the lock icon next to the web address, allow Microphone, then try again.", "err");
+      return;
+    }
+    mime = pickMime();
+    chunks = [];
+    recorder = mime ? new MediaRecorder(stream, { mimeType: mime, audioBitsPerSecond: 64000 })
+                    : new MediaRecorder(stream);
+    mime = recorder.mimeType || mime || "audio/webm";
+    recorder.ondataavailable = function (ev) { if (ev.data && ev.data.size) chunks.push(ev.data); };
+    recorder.onstop = finishRecording;
+    recorder.start(1000);
+    startedAt = Date.now();
+    $("timer").textContent = "0:00";
+    tickId = setInterval(function () {
+      $("timer").textContent = fmt(Math.floor((Date.now() - startedAt) / 1000));
+    }, 500);
+    holdScreenOn();
+    setMode("recording");
+    setStatus("Recording. Talk as long as you like, then press the red Stop button.");
+  }
+
+  function stopRecording() {
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+  }
+
+  function finishRecording() {
+    clearInterval(tickId);
+    releaseScreen();
+    if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    blob = new Blob(chunks, { type: mime });
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(blob);
+    $("player").src = objectUrl;
+    var dl = $("dlLink");
+    dl.href = objectUrl;
+    dl.download = fileName();
+    dl.hidden = false;
+    setMode("review");
+    setStatus("Press play to listen. If you like it, press Save my answer.");
+  }
+
+  function toBase64(b) {
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onload = function () { resolve(String(r.result).split(",")[1]); };
+      r.onerror = reject;
+      r.readAsDataURL(b);
+    });
+  }
+
+  async function save() {
+    if (!blob) return;
+    if (UPLOAD_URL.indexOf("PASTE_") === 0) {
+      setStatus("Saving is not set up yet. Press Keep a copy on my phone for now.", "err");
+      return;
+    }
+    setMode("saving");
+    setStatus("Saving your answer. Please keep this page open.");
+    try {
+      var data = await toBase64(blob);
+      var res = await fetch(UPLOAD_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ name: fileName(), mime: mime, question: "Day " + day + ": " + qFor(day), data: data })
+      });
+      var out = await res.json();
+      if (!out.ok) throw new Error(out.error || "save failed");
+      setMode("saved");
+      setStatus("Saved. Thank you! You can come back tomorrow for the next question.", "ok");
+    } catch (e) {
+      setMode("review");
+      setStatus("That did not save. Check your internet and press Save my answer again. Your recording is still here.", "err");
+    }
+  }
+
+  function again() {
+    if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+    blob = null; chunks = [];
+    $("player").removeAttribute("src");
+    $("dlLink").hidden = true;
+    $("timer").textContent = "0:00";
+    setMode("idle");
+    setStatus("Press the red button and start talking.");
+  }
+
+  $("recBtn").addEventListener("click", function () {
+    if (mode === "recording") stopRecording();
+    else if (mode === "idle") startRecording();
+    else if (mode === "saved") again();
+  });
+  $("saveBtn").addEventListener("click", save);
+  $("againBtn").addEventListener("click", again);
+
+  window.addEventListener("beforeunload", function (ev) {
+    if (mode === "recording" || mode === "review" || mode === "saving") { ev.preventDefault(); ev.returnValue = ""; }
+  });
+
+  // Earlier questions: tapping "Answer this one" switches the question being answered.
+  var list = $("pastList"), toggle = $("toggle");
+  if (todayDay === 1) {
+    $("pastSection").hidden = true;
+  } else {
+    for (var d = todayDay - 1; d >= 1; d--) {
+      (function (n) {
+        var li = document.createElement("li");
+        var a = document.createElement("span"); a.className = "d"; a.textContent = "Day " + n;
+        var b = document.createElement("span"); b.className = "q"; b.textContent = qFor(n);
+        var go = document.createElement("button"); go.type = "button"; go.className = "quiet"; go.textContent = "Answer this one";
+        go.addEventListener("click", function () {
+          if (mode === "recording" || mode === "saving") return;
+          if (mode !== "idle") again();
+          day = n; renderQuestion(); window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+        li.appendChild(a); li.appendChild(b); li.appendChild(go); list.appendChild(li);
+      })(d);
+    }
+    toggle.addEventListener("click", function () {
+      var open = list.hidden;
+      list.hidden = !open;
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.textContent = open ? "Hide earlier questions" : "Show earlier questions";
+    });
+  }
+
+  renderQuestion();
+  setMode("idle");
+</script>
+</body>
+</html>

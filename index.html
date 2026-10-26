@@ -85,6 +85,15 @@
   button:disabled { opacity: 0.45; cursor: default; }
   button:focus-visible, .btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 
+  .own { background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+  .own h2 { font-family: var(--font-display); font-size: 1.25rem; margin: 0; }
+  .own-help { margin: 0; color: var(--muted); font-size: 1.05rem; }
+  .own-label { font-weight: 700; }
+  .own textarea {
+    width: 100%; font: inherit; line-height: 1.4; padding: 12px 14px; border-radius: 10px;
+    border: 2px solid var(--line); background: var(--bg); color: var(--ink); resize: vertical;
+  }
+  .own textarea:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   .past { padding: 20px 24px; }
   .past h2 { font-family: var(--font-display); font-size: 1.25rem; margin: 0 0 10px; }
   .past ul { list-style: none; margin: 14px 0 0; padding: 0; border-top: 1px solid var(--line); }
@@ -128,6 +137,7 @@
     </div>
     <p class="nudge">There are no wrong answers. Take as long as you like.</p>
     <p class="nudge"><button type="button" class="quiet" id="skipBtn">Skip this question</button></p>
+    <p class="nudge"><button type="button" class="quiet" id="backBtn" hidden>Back to my questions</button></p>
   </section>
 
   <section class="recorder" id="recSec" aria-label="Record your answer">
@@ -143,6 +153,14 @@
       <button type="button" class="quiet" id="againBtn">Record again</button>
       <a class="btn quiet" id="dlLink" href="#" hidden>Keep a copy on my phone</a>
     </div>
+  </section>
+
+  <section class="own" id="ownSec">
+    <h2>Something else on your mind?</h2>
+    <p class="own-help">If a memory comes up that you want to tell, write what it is about and record it in your own words.</p>
+    <label for="ownText" class="own-label">What do you want to talk about?</label>
+    <textarea id="ownText" rows="3" maxlength="300" placeholder="For example: The summer we moved to a new town"></textarea>
+    <button type="button" id="ownBtn">Tell this story</button>
   </section>
 
   <section class="past" id="pastSection">
@@ -294,9 +312,11 @@
       var s = JSON.parse(localStorage.getItem(KEY));
       if (s && s.done) return s;
     } catch (e) {}
-    return { done: {}, skipped: {}, lastSaved: "" };
+    return { done: {}, skipped: {}, lastSaved: "", own: [] };
   }
   var state = loadState();
+  if (!state.skipped) state.skipped = {};
+  if (!state.own) state.own = [];
   function persist() {
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
   }
@@ -312,6 +332,7 @@
   var day = 1;                  // the question being answered
   var chosen = null;            // a question picked from the earlier list
   var extra = false;            // she asked for another question today
+  var ownTopic = "";            // a topic she wrote herself
   var mode = "idle";            // idle | recording | review | saving | saved
   var recorder = null, stream = null, chunks = [], blob = null, mime = "";
   var tickId = null, startedAt = 0, wakeLock = null, objectUrl = null;
@@ -340,16 +361,19 @@
     $("againBtn").disabled = (m === "saving");
     $("saveBtn").textContent = m === "saved" ? "Saved" : "Save my answer";
     $("skipBtn").disabled = (m === "recording" || m === "saving");
-    $("skipBtn").hidden = (m === "saved") || !!state.done[day];
+    $("skipBtn").hidden = !!ownTopic || (m === "saved") || !!state.done[day];
   }
 
+  var OWN_TIPS = ["Who was there, and when it happened", "What you saw, heard, and felt", "Why it matters to you"];
+
   function renderQuestion() {
-    $("skipBtn").hidden = (mode === "saved") || !!state.done[day];
-    $("dayLabel").textContent = "Question " + day + " of " + total;
-    $("question").textContent = qFor(day);
+    $("skipBtn").hidden = !!ownTopic || (mode === "saved") || !!state.done[day];
+    $("backBtn").hidden = !ownTopic;
+    $("dayLabel").textContent = ownTopic ? "Your own story" : "Question " + day + " of " + total;
+    $("question").textContent = ownTopic || qFor(day);
     var tips = $("tips");
     tips.textContent = "";
-    tipsFor(day).forEach(function (t) {
+    (ownTopic ? OWN_TIPS : tipsFor(day)).forEach(function (t) {
       var li = document.createElement("li");
       li.textContent = t;
       tips.appendChild(li);
@@ -360,13 +384,14 @@
     $("dateLine").textContent =
       new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     var cur = nextOpen();
-    var finished = (cur === 0 && !chosen);
-    var resting = (!finished && !chosen && !extra && state.lastSaved === dateKey());
+    var forced = chosen || ownTopic;
+    var finished = (cur === 0 && !forced);
+    var resting = (!finished && !forced && !extra && state.lastSaved === dateKey());
     $("todaySec").hidden = $("recSec").hidden = (finished || resting);
     $("restCard").hidden = !resting;
     $("doneCard").hidden = !finished;
     if (!finished && !resting) {
-      day = chosen || cur;
+      if (!ownTopic) day = chosen || cur;
       renderQuestion();
     }
     renderPast();
@@ -393,6 +418,10 @@
   }
 
   function fileName() {
+    if (ownTopic) {
+      var slug = ownTopic.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+      return "Own story - " + slug + " - " + stamp() + "." + extFor(mime);
+    }
     return "Question " + pad2(day) + " - " + stamp() + "." + extFor(mime);
   }
 
@@ -475,16 +504,23 @@
       var res = await fetch(UPLOAD_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ name: fileName(), mime: mime, question: "Question " + day + ": " + qFor(day), data: data })
+        body: JSON.stringify({ name: fileName(), mime: mime, question: ownTopic ? "Her own topic: " + ownTopic : "Question " + day + ": " + qFor(day), data: data })
       });
       var out = await res.json();
       if (!out.ok) throw new Error(out.error || "save failed");
-      state.done[day] = true;
-      delete state.skipped[day];
-      state.lastSaved = dateKey();
-      persist();
-      setMode("saved");
-      setStatus("Saved. Thank you! Come back tomorrow for the next question.", "ok");
+      if (ownTopic) {
+        state.own.push({ q: ownTopic, date: dateKey() });
+        persist();
+        setMode("saved");
+        setStatus("Saved. Thank you! Press Back to my questions when you are ready.", "ok");
+      } else {
+        state.done[day] = true;
+        delete state.skipped[day];
+        state.lastSaved = dateKey();
+        persist();
+        setMode("saved");
+        setStatus("Saved. Thank you! Come back tomorrow for the next question.", "ok");
+      }
       renderPast();
     } catch (e) {
       setMode("review");
@@ -519,6 +555,26 @@
     render();
   });
 
+  $("ownBtn").addEventListener("click", function () {
+    if (mode === "recording" || mode === "saving") return;
+    var text = $("ownText").value.replace(/\s+/g, " ").trim();
+    if (!text) { $("ownText").focus(); return; }
+    if (mode !== "idle") again();
+    ownTopic = text;
+    chosen = null;
+    $("ownText").value = "";
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  $("backBtn").addEventListener("click", function () {
+    if (mode === "recording" || mode === "saving") return;
+    if (mode !== "idle") again();
+    ownTopic = "";
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
   $("moreBtn").addEventListener("click", function () {
     extra = true;
     render();
@@ -546,12 +602,20 @@
           if (mode === "recording" || mode === "saving") return;
           if (mode !== "idle") again();
           chosen = n;
+          ownTopic = "";
           render();
           window.scrollTo({ top: 0, behavior: "smooth" });
         });
         li.appendChild(a); li.appendChild(b); li.appendChild(go); list.appendChild(li);
       })(d);
     }
+    state.own.slice().reverse().forEach(function (o) {
+      rows++;
+      var li = document.createElement("li");
+      var a = document.createElement("span"); a.className = "d"; a.textContent = "Your story";
+      var b = document.createElement("span"); b.className = "q"; b.textContent = o.q;
+      li.appendChild(a); li.appendChild(b); list.appendChild(li);
+    });
     $("pastSection").hidden = (rows === 0);
   }
   toggle.addEventListener("click", function () {

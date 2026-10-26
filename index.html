@@ -216,8 +216,8 @@
       ["What happened, as much as you are comfortable sharing", "Who or what helped you through", "What you learned, and what you would tell someone going through the same"]],
     ["What do you hope your grandchildren know about you?",
       ["What you want them to remember about your character", "A story you would like them to hear", "A message to each of them, if you like"]],
-    ["What would you like the family to remember about Dad?",
-      ["His character and what he was like", "A story that shows who he was", "What you loved most about him"]],
+    ["What do you love most about Dad? What is he like?",
+      ["His character and what he is like", "A story that shows who he is", "What you have loved about your life together"]],
     ["If you could tell your younger self one thing, what would it be?",
       ["How old she is in your mind", "What you would say, in your own words", "Why you would say it"]],
     ["What traditions did you start in our family?",
@@ -537,7 +537,7 @@
         state.lastSaved = dateKey();
         persist();
         setMode("saved");
-        setStatus("Saved. Thank you! Press Next question when you are ready for another one, or close this page and come back any time.", "ok");
+        setStatus("Saved. Thank you! Press Next question when you are ready for another one. Your place is saved, so you can come back any time.", "ok");
       }
       renderPast();
     } catch (e) {

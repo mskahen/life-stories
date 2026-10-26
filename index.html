@@ -130,13 +130,6 @@
     <button type="button" id="beginBtn">Let's begin</button>
   </section>
 
-  <section class="today" id="restCard" hidden>
-    <p class="label">All done for today</p>
-    <p class="question">Thank you, Grandma Barb.</p>
-    <p class="nudge">Today's story is saved. Come back tomorrow for the next question.</p>
-    <p class="nudge"><button type="button" class="quiet" id="moreBtn">Answer the next one now</button></p>
-  </section>
-
   <section class="today" id="doneCard" hidden>
     <p class="label">That was every question</p>
     <p class="question">Thank you for sharing your stories.</p>
@@ -164,6 +157,7 @@
     <p class="status" id="status" role="status" aria-live="polite">Press the red button and start talking. Tap Allow if your phone asks to use the microphone.</p>
     <audio id="player" controls hidden></audio>
     <div class="actions" id="actions" hidden>
+      <button type="button" id="nextBtn" hidden>Next question</button>
       <button type="button" id="saveBtn">Save my answer</button>
       <button type="button" class="quiet" id="againBtn">Record again</button>
       <a class="btn quiet" id="dlLink" href="#" hidden>Keep a copy on my phone</a>
@@ -346,7 +340,6 @@
 
   var day = 1;                  // the question being answered
   var chosen = null;            // a question picked from the earlier list
-  var extra = false;            // she asked for another question today
   var ownTopic = "";            // a topic she wrote herself
   var mode = "idle";            // idle | recording | review | saving | saved
   var recorder = null, stream = null, chunks = [], blob = null, mime = "";
@@ -375,6 +368,8 @@
     $("saveBtn").disabled = (m === "saving" || m === "saved");
     $("againBtn").disabled = (m === "saving");
     $("saveBtn").textContent = m === "saved" ? "Saved" : "Save my answer";
+    $("nextBtn").hidden = (m !== "saved");
+    $("nextBtn").textContent = ownTopic ? "Back to my questions" : "Next question";
     $("skipBtn").disabled = (m === "recording" || m === "saving");
     $("skipBtn").hidden = !!ownTopic || (m === "saved") || !!state.done[day];
   }
@@ -405,17 +400,15 @@
     $("helpBtn").hidden = welcome;
     $("ownSec").hidden = $("pastSection").hidden = welcome;
     if (welcome) {
-      $("todaySec").hidden = $("recSec").hidden = $("restCard").hidden = $("doneCard").hidden = true;
+      $("todaySec").hidden = $("recSec").hidden = $("doneCard").hidden = true;
       return;
     }
     var cur = nextOpen();
     var forced = chosen || ownTopic;
     var finished = (cur === 0 && !forced);
-    var resting = (!finished && !forced && !extra && state.lastSaved === dateKey());
-    $("todaySec").hidden = $("recSec").hidden = (finished || resting);
-    $("restCard").hidden = !resting;
+    $("todaySec").hidden = $("recSec").hidden = finished;
     $("doneCard").hidden = !finished;
-    if (!finished && !resting) {
+    if (!finished) {
       if (!ownTopic) day = chosen || cur;
       renderQuestion();
     }
@@ -544,7 +537,7 @@
         state.lastSaved = dateKey();
         persist();
         setMode("saved");
-        setStatus("Saved. Thank you! Come back tomorrow for the next question.", "ok");
+        setStatus("Saved. Thank you! Press Next question when you are ready for another one, or close this page and come back any time.", "ok");
       }
       renderPast();
     } catch (e) {
@@ -613,9 +606,13 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  $("moreBtn").addEventListener("click", function () {
-    extra = true;
+  $("nextBtn").addEventListener("click", function () {
+    if (mode !== "saved") return;
+    again();
+    ownTopic = "";
+    chosen = null;
     render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
   window.addEventListener("beforeunload", function (ev) {

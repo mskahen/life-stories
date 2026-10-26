@@ -85,6 +85,8 @@
   button:disabled { opacity: 0.45; cursor: default; }
   button:focus-visible, .btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 
+  .welcome { background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 28px 24px 32px; }
+  .steps { margin: 16px 0 22px; padding-left: 1.4em; display: flex; flex-direction: column; gap: 12px; }
   .own { background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
   .own h2 { font-family: var(--font-display); font-size: 1.25rem; margin: 0; }
   .own-help { margin: 0; color: var(--muted); font-size: 1.05rem; }
@@ -113,7 +115,20 @@
   <header>
     <h1>Grandma Barb's Stories</h1>
     <p id="dateLine"></p>
+    <p><button type="button" class="quiet" id="helpBtn">How this works</button></p>
   </header>
+
+  <section class="welcome" id="welcomeCard" hidden>
+    <p class="label">Welcome</p>
+    <p class="question">Hello, Grandma Barb.</p>
+    <p class="nudge">This is a place to tell your stories out loud. Here is how it works:</p>
+    <ol class="steps">
+      <li>You will see one question. Read it and take your time thinking.</li>
+      <li>Press the big red Record button and talk. The first time, tap Allow if your phone asks to use the microphone.</li>
+      <li>Press Stop when you are done. You can listen to it, then press Save my answer.</li>
+    </ol>
+    <button type="button" id="beginBtn">Let's begin</button>
+  </section>
 
   <section class="today" id="restCard" hidden>
     <p class="label">All done for today</p>
@@ -380,9 +395,19 @@
     });
   }
 
+  // The welcome card shows on the first visit, or when she taps "How this works" (add ?welcome to the address to preview it).
+  var showHelp = /[?&]welcome\b/.test(location.search);
   function render() {
     $("dateLine").textContent =
       new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    var welcome = showHelp || !state.welcomed;
+    $("welcomeCard").hidden = !welcome;
+    $("helpBtn").hidden = welcome;
+    $("ownSec").hidden = $("pastSection").hidden = welcome;
+    if (welcome) {
+      $("todaySec").hidden = $("recSec").hidden = $("restCard").hidden = $("doneCard").hidden = true;
+      return;
+    }
     var cur = nextOpen();
     var forced = chosen || ownTopic;
     var finished = (cur === 0 && !forced);
@@ -542,6 +567,19 @@
     if (mode === "recording") stopRecording();
     else if (mode === "idle") startRecording();
     else if (mode === "saved") again();
+  });
+  $("helpBtn").addEventListener("click", function () {
+    if (mode === "recording" || mode === "saving") return;
+    showHelp = true;
+    render();
+    window.scrollTo({ top: 0 });
+  });
+  $("beginBtn").addEventListener("click", function () {
+    showHelp = false;
+    state.welcomed = true;
+    persist();
+    render();
+    window.scrollTo({ top: 0 });
   });
   $("saveBtn").addEventListener("click", save);
   $("againBtn").addEventListener("click", again);

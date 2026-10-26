@@ -112,7 +112,7 @@
       <p class="tips-head">When you record, try to tell me:</p>
       <ul class="tips" id="tips"></ul>
     </div>
-    <p class="nudge">Say your own name and "Day <span id="nudgeDay"></span>" at the start. There are no wrong answers. Take as long as you like.</p>
+    <p class="nudge">There are no wrong answers. Take as long as you like.</p>
   </section>
 
   <section class="recorder" aria-label="Record your answer">
@@ -317,7 +317,6 @@
       new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     $("dayLabel").textContent = day === todayDay ? "Question for Day " + day : "Question from Day " + day;
     $("question").textContent = qFor(day);
-    $("nudgeDay").textContent = day;
     var tips = $("tips");
     tips.textContent = "";
     tipsFor(day).forEach(function (t) {

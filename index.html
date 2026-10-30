@@ -21,6 +21,7 @@
     --rec: #c62828;
     --rec-ink: #ffffff;
     --ok: #1b6b35;
+    --hi: #d97706;
     --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
     --font-body: "Atkinson Hyperlegible", "Segoe UI", Verdana, sans-serif;
   }
@@ -28,7 +29,7 @@
     :root {
       --bg: #0f1a21; --card: #17252e; --ink: #eef3f6; --muted: #aebdc7;
       --line: #2c3f4b; --accent: #7cc7d4; --accent-ink: #0b1a20;
-      --rec: #e53935; --ok: #7fd49a;
+      --rec: #e53935; --ok: #7fd49a; --hi: #f5b041;
     }
   }
   * { box-sizing: border-box; }
@@ -53,24 +54,36 @@
   .label { font-size: 1rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin: 0 0 14px; }
   .question { font-family: var(--font-display); font-weight: 600; font-size: 2.1rem; line-height: 1.25; margin: 0; text-wrap: balance; }
   .nudge { margin: 20px 0 0; color: var(--muted); font-size: 1.05rem; }
+  /* the three question buttons share one row; long labels wrap inside their button */
+  .q-actions { display: flex; flex-wrap: nowrap; gap: 8px; margin-top: 20px; }
+  .q-actions button { flex: 1 1 0; min-width: 0; padding: 6px 8px; font-size: 0.8rem; line-height: 1.2; text-align: center; }
   .tips-box { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
   .tips-head { margin: 0 0 8px; font-weight: 700; }
   .tips { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; }
 
   .recorder { padding: 28px 24px; display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center; }
+  .rec-row { display: flex; gap: 20px; justify-content: center; }
   .rec-btn {
-    width: 168px; height: 168px; border-radius: 50%; padding: 0; min-height: 0;
-    background: var(--rec); color: var(--rec-ink); border: 8px solid var(--card);
-    box-shadow: 0 0 0 4px var(--rec); font-size: 1.3rem; letter-spacing: 0.02em;
+    --c: var(--rec); --c-ink: var(--rec-ink);
+    width: 124px; height: 124px; border-radius: 50%; padding: 0; min-height: 0;
+    background: var(--c); color: var(--c-ink); border: 6px solid var(--card);
+    box-shadow: 0 0 0 4px var(--c); font-size: 1.2rem; letter-spacing: 0.02em;
     display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 6px;
   }
-  .rec-btn .stop-icon { width: 38px; height: 38px; background: var(--rec-ink); border-radius: 6px; display: none; }
-  .rec-btn[data-mode="recording"] .stop-icon { display: block; }
-  .rec-btn[data-mode="recording"] { animation: pulse 1.6s ease-in-out infinite; }
-  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 4px var(--rec); } 50% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--rec) 35%, transparent); } }
-  @media (prefers-reduced-motion: reduce) { .rec-btn[data-mode="recording"] { animation: none; } }
-  .rec-btn[data-paused="true"] { animation: none; }
+  .rec-btn.dark { --c: var(--ink); --c-ink: var(--card); }
+  .rec-btn:disabled { --c: var(--muted); --c-ink: var(--card); opacity: 0.4; }
+  .rec-btn.long { font-size: 1rem; line-height: 1.2; padding: 0 10px; }
+  .rec-btn .ic { width: 30px; height: 30px; background: var(--c-ink); }
+  .rec-btn .ic.dot { border-radius: 50%; }
+  .rec-btn .ic.stop { border-radius: 5px; }
+  .rec-btn .ic.pause { background: none; border-left: 10px solid var(--c-ink); border-right: 10px solid var(--c-ink); }
+  .rec-btn .ic.none { display: none; }
+  .rec-btn[data-pulse="true"] { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 4px var(--c); } 50% { box-shadow: 0 0 0 12px color-mix(in srgb, var(--c) 30%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { .rec-btn[data-pulse="true"] { animation: none; } }
   .timer { font-variant-numeric: tabular-nums; font-size: 2rem; font-weight: 700; margin: 0; }
+  .wave { width: 100%; max-width: 30rem; height: 72px; display: block; }
+  .hearing { margin: 0; color: var(--rec); font-weight: 700; font-size: 1.05rem; max-width: 30rem; }
   .status { margin: 0; color: var(--muted); font-size: 1.05rem; max-width: 30rem; }
   .status.ok { color: var(--ok); font-weight: 700; }
   .status.err { color: var(--rec); font-weight: 700; }
@@ -82,7 +95,9 @@
     background: var(--accent); color: var(--accent-ink); border: 2px solid var(--accent);
     display: inline-flex; align-items: center; justify-content: center; text-decoration: none;
   }
+  button, .btn { text-transform: uppercase; letter-spacing: 0.03em; }
   button.quiet, .btn.quiet { background: transparent; color: var(--accent); }
+  #nextBtn { box-shadow: 0 0 0 3px var(--card), 0 0 0 7px var(--hi); }   /* the step she should take next */
   button:disabled { opacity: 0.45; cursor: default; }
   button:focus-visible, .btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 
@@ -145,26 +160,35 @@
       <ul class="tips" id="tips"></ul>
     </div>
     <p class="nudge">There are no wrong answers. Take as long as you like.</p>
-    <p class="nudge"><button type="button" class="quiet" id="laterBtn">Ask me this one later</button></p>
-    <p class="nudge"><button type="button" class="quiet" id="endBtn">Save this one for the end</button></p>
-    <p class="nudge"><button type="button" class="quiet" id="skipBtn">Skip this question</button></p>
+    <div class="q-actions">
+      <button type="button" class="quiet" id="laterBtn">Ask me this one later</button>
+      <button type="button" class="quiet" id="endBtn">Save this one for the end</button>
+      <button type="button" class="quiet" id="skipBtn">Skip this question</button>
+    </div>
     <p class="nudge"><button type="button" class="quiet" id="backBtn" hidden>Back to my questions</button></p>
   </section>
 
   <section class="recorder" id="recSec" aria-label="Record your answer">
-    <button class="rec-btn" id="recBtn" type="button" data-mode="idle">
-      <span class="stop-icon" aria-hidden="true"></span>
-      <span id="recBtnText">Record</span>
-    </button>
+    <div class="rec-row">
+      <button class="rec-btn" id="recBtn" type="button" data-mode="idle">
+        <span class="ic dot" aria-hidden="true"></span>
+        <span class="lb">Record</span>
+      </button>
+      <button class="rec-btn dark" id="stopBtn" type="button" data-mode="idle" disabled>
+        <span class="ic stop" aria-hidden="true"></span>
+        <span class="lb">Stop</span>
+      </button>
+    </div>
     <p class="timer" id="timer" aria-hidden="true">0:00</p>
-    <button type="button" class="quiet" id="pauseBtn" hidden>Pause</button>
-    <p class="status" id="status" role="status" aria-live="polite">Press the red button and start talking. Tap Allow if your phone asks to use the microphone.</p>
+    <canvas class="wave" id="wave" aria-hidden="true" hidden></canvas>
+    <p class="hearing" id="hearing" role="status" hidden>I cannot hear you yet. Please talk a little louder or hold the phone closer to your mouth.</p>
+    <p class="status" id="status" role="status" aria-live="polite">Press the red Record button and start talking. Tap Allow if your phone asks to use the microphone.</p>
     <audio id="player" controls hidden></audio>
     <div class="actions" id="actions" hidden>
       <button type="button" id="nextBtn" hidden>Next question</button>
       <button type="button" id="saveBtn">Save my answer</button>
       <button type="button" class="quiet" id="againBtn">Record again</button>
-      <a class="btn quiet" id="dlLink" href="#" hidden>Keep a copy on my phone</a>
+      <a class="btn quiet" id="dlLink" href="#" hidden>Save a copy to my phone</a>
     </div>
   </section>
 
@@ -436,7 +460,16 @@
       "Faith and Jesus"],
     ["What do you want people to remember about you?",
       ["How you want to be described", "A few values or habits that matter to you", "Anything you want to say to the family, in your own words"],
-      "Joys and legacy"]
+      "Joys and legacy"],
+    ["Do you remember a time in your childhood when you were in awe of a piece of technology? What was it?",
+      ["Where you first saw it and who showed it to you", "What it could do that amazed you", "How you felt, and who you told about it"],
+      "Technology and change"],
+    ["What did you listen to on the radio or a record player when you were young?",
+      ["Favorite songs, singers, or shows", "Where the family gathered to listen", "A song that still takes you back"],
+      "Technology and change"],
+    ["What do you think of smartphones, and what would you want a grandchild to know about growing up without them?",
+      ["What you like about your phone, and what drives you crazy", "How you learned to use it", "A message to young people today"],
+      "Technology and change"]
   ];
 
   var $ = function (id) { return document.getElementById(id); };
@@ -504,8 +537,10 @@
 
   // Ask later / Save for the end / Skip: only for a fresh question from her list, never mid-recording.
   function syncSkipButtons() {
-    var gone = !!ownTopic || mode === "saved" || !!state.done[day];
-    var busy = (mode === "recording" || mode === "saving");
+    // Right after a save they stay on screen but grayed out (so the row does not vanish) until Next question.
+    var justSaved = (mode === "saved" && !ownTopic);
+    var gone = !!ownTopic || (!justSaved && !!state.done[day]);
+    var busy = (mode === "saving" || justSaved);   // usable any other time, even mid-recording (she is asked first)
     ["skipBtn", "laterBtn", "endBtn"].forEach(function (id) {
       $(id).hidden = gone || (id !== "skipBtn" && !!chosen);
       $(id).disabled = busy;
@@ -514,17 +549,16 @@
 
   function setMode(m) {
     mode = m;
-    var btn = $("recBtn");
-    btn.dataset.mode = m;
-    btn.disabled = (m === "saving");
-    $("recBtnText").textContent = m === "recording" ? "Stop" : "Record";
-    $("pauseBtn").hidden = (m !== "recording");
+    $("recBtn").dataset.mode = m;
+    $("stopBtn").dataset.mode = m;
+    syncRec();
     var review = (m === "review" || m === "saving" || m === "saved");
     $("player").hidden = !review;
     $("actions").hidden = !review;
-    $("saveBtn").disabled = (m === "saving" || m === "saved");
     $("againBtn").disabled = (m === "saving");
-    $("saveBtn").textContent = m === "saved" ? "Saved" : "Save my answer";
+    // "Save and finish" saves by itself; this button only comes back if that save failed.
+    $("saveBtn").hidden = (m !== "review");
+    $("saveBtn").textContent = "Try saving again";
     $("nextBtn").hidden = (m !== "saved");
     $("nextBtn").textContent = ownTopic ? "Back to my questions" : "Next question";
     syncSkipButtons();
@@ -535,7 +569,7 @@
   function renderQuestion() {
     syncSkipButtons();
     $("backBtn").hidden = !ownTopic;
-    $("dayLabel").textContent = ownTopic ? "Your own story" : "Question " + posOf(day) + " of " + total + " · " + catFor(day);
+    $("dayLabel").textContent = ownTopic ? "Your own story" : "Question " + day + " of " + total + " · " + catFor(day);
     $("question").textContent = ownTopic || qFor(day);
     var tips = $("tips");
     tips.textContent = "";
@@ -607,14 +641,89 @@
     wakeLock = null;
   }
 
+  // Live sound bars so she can see she is being heard. Never allowed to break recording.
+  var meter = null;
+  function startMeter() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      var cv = $("wave");
+      if (!AC || !cv) return;
+      var ctx = new AC();
+      if (ctx.resume) ctx.resume();
+      var an = ctx.createAnalyser();
+      an.fftSize = 1024;
+      ctx.createMediaStreamSource(stream).connect(an);
+      var dpr = window.devicePixelRatio || 1;
+      cv.hidden = false;
+      cv.width = Math.round(cv.clientWidth * dpr);
+      cv.height = Math.round(cv.clientHeight * dpr);
+      var g = cv.getContext("2d"), buf = new Uint8Array(an.fftSize);
+      var color = getComputedStyle(document.documentElement).getPropertyValue("--rec").trim() || "#c62828";
+      var lastLoud = Date.now(), raf = 0;
+      var N = 72, pts = [];                       // smoothed height of the line at N points
+      for (var i = 0; i <= N; i++) pts.push(0);
+      function frame() {
+        raf = requestAnimationFrame(frame);
+        an.getByteTimeDomainData(buf);
+        var sum = 0;
+        for (var j = 0; j < buf.length; j++) { var v = (buf[j] - 128) / 128; sum += v * v; }
+        var rms = Math.sqrt(sum / buf.length);
+        if (!paused && rms > 0.015) { lastLoud = Date.now(); heardVoice = true; }
+        $("hearing").hidden = paused || ctx.state !== "running" || (Date.now() - lastLoud < 4000);
+        var W = cv.width, H = cv.height, mid = H / 2, win = Math.floor(buf.length / N);
+        for (var k = 0; k <= N; k++) {
+          var s2 = 0;
+          for (var q = 0; q < win; q++) { var d = (buf[Math.min(buf.length - 1, k * win + q)] - 128) / 128; s2 += d * d; }
+          var env = paused ? 0 : Math.sqrt(s2 / win) * 9;      // generous gain so a soft voice still moves it
+          // swell in the middle, calm at both ends; rise fast, fall slowly so it feels alive
+          var target = Math.min(1, env) * (0.25 + 0.75 * Math.sin(Math.PI * k / N));
+          pts[k] += (target - pts[k]) * (target > pts[k] ? 0.5 : 0.15);
+        }
+        function hy(k) { return Math.max(H * 0.03, pts[k] * mid * 0.92); }
+        g.clearRect(0, 0, W, H);
+        g.fillStyle = color;
+        g.globalAlpha = 0.9;
+        g.beginPath();
+        g.moveTo(0, mid - hy(0));
+        for (var m = 1; m <= N; m++) {
+          var x = W * m / N, px = W * (m - 1) / N;
+          g.quadraticCurveTo(px, mid - hy(m - 1), (px + x) / 2, mid - (hy(m - 1) + hy(m)) / 2);
+        }
+        g.lineTo(W, mid - hy(N));
+        g.lineTo(W, mid + hy(N));
+        for (var n = N - 1; n >= 0; n--) {
+          var x2 = W * n / N, px2 = W * (n + 1) / N;
+          g.quadraticCurveTo(px2, mid + hy(n + 1), (px2 + x2) / 2, mid + (hy(n + 1) + hy(n)) / 2);
+        }
+        g.lineTo(0, mid + hy(0));
+        g.closePath();
+        g.fill();
+        g.globalAlpha = 1;
+      }
+      raf = requestAnimationFrame(frame);
+      meter = { ctx: ctx, stop: function () { cancelAnimationFrame(raf); } };
+    } catch (e) { meter = null; }
+  }
+  function stopMeter() {
+    try {
+      if (meter) { meter.stop(); meter.ctx.close(); }
+    } catch (e) {}
+    meter = null;
+    $("wave").hidden = true;
+    $("hearing").hidden = true;
+  }
+
   async function startRecording() {
     if (!navigator.mediaDevices || !window.MediaRecorder) {
       setStatus("This browser cannot record. Please open this page in Chrome.", "err");
       return;
     }
+    if (starting) return;      // a second tap while the phone is still asking for the microphone
+    starting = true;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (e) {
+      starting = false;
       setStatus("The microphone is blocked. Tap the lock icon next to the web address, allow Microphone, then try again.", "err");
       return;
     }
@@ -634,9 +743,15 @@
       $("timer").textContent = fmt(Math.floor((now - startedAt - pausedTotal) / 1000));
     }, 500);
     holdScreenOn();
+    startMeter();
+    starting = false;
+    heardVoice = false;
+    armed = false;             // Stop / Pause stays grayed for the first 2 seconds so a quick double-tap cannot end it
+    setTimeout(function () { armed = true; syncRec(); }, 2000);
     setMode("recording");
-    setStatus("Recording. Talk as long as you like, then press the red Stop button.");
+    setStatus(RECORDING_TEXT);
   }
+  var starting = false, armed = false, heardVoice = false;
 
   function stopRecording() {
     if (recorder && recorder.state !== "inactive") recorder.stop();
@@ -648,35 +763,99 @@
       recorder.pause();
       paused = true;
       pausedAt = Date.now();
-      $("pauseBtn").textContent = "Resume";
-      $("recBtn").dataset.paused = "true";
-      setStatus("Paused. Press Resume when you are ready to keep going, or press the red Stop button to finish.");
     } else if (recorder.state === "paused") {
       recorder.resume();
       pausedTotal += Date.now() - pausedAt;
       paused = false;
-      $("pauseBtn").textContent = "Pause";
-      $("recBtn").dataset.paused = "false";
-      setStatus("Recording. Talk as long as you like, then press the red Stop button.");
     }
+    syncRec();
+    setStatus(paused ? PAUSED_TEXT : RECORDING_TEXT);
+    if (paused) previewSoFar(); else hidePreview();
   }
 
+  // While paused she can listen to everything recorded so far before deciding what to do.
+  var previewUrl = null;
+  function hidePreview() {
+    var pl = $("player");
+    try { pl.pause(); } catch (e) {}
+    pl.hidden = true;
+    pl.removeAttribute("src");
+    if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+  }
+  function previewSoFar() {
+    try { recorder.requestData(); } catch (e) {}
+    setTimeout(function () {
+      if (!paused || !chunks.length) return;
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = URL.createObjectURL(new Blob(chunks, { type: mime }));
+      var pl = $("player");
+      pl.src = previewUrl;
+      pl.hidden = false;
+    }, 250);
+  }
+
+  var RECORDING_TEXT = "Recording. Talk as long as you like. Press Stop / Pause when you want a break or are done.";
+  var PAUSED_TEXT = "Your recording is paused. Press play to hear it so far, then continue recording or save and finish.";
+
+  function paint(btn, c) {
+    btn.hidden = !c.show;
+    btn.disabled = !c.on;
+    btn.dataset.act = c.act;
+    btn.dataset.pulse = c.pulse ? "true" : "false";
+    btn.classList.toggle("dark", !!c.dark);
+    btn.classList.toggle("long", c.label.length > 9);
+    btn.querySelector(".ic").className = "ic " + c.icon;
+    btn.querySelector(".lb").textContent = c.label;
+  }
+
+  function syncRec() {
+    var m = mode, rec = (m === "recording"), pz = rec && paused;
+    // Record and Stop / Pause are two separate buttons; the one that does not apply is grayed out.
+    // After a save, Record stays gray: her next steps are Next question or Record again.
+    var R = { label: "Record", act: "start", icon: "dot", on: (m === "idle"), show: true };
+    var S = { label: "Stop / Pause", act: "pause", icon: "stop", on: rec && !pz && armed, show: true, dark: true, pulse: rec && !pz };
+    if (pz) {
+      R = { label: "Continue recording", act: "resume", icon: "dot", on: true, show: true };
+      S = { label: "Save and finish", act: "finish", icon: "none", on: true, show: true, dark: true };
+    }
+    paint($("recBtn"), R);
+    paint($("stopBtn"), S);
+  }
+
+  function doAct(a) {
+    if (a === "start") { if (mode === "idle") startRecording(); }
+    else if (a === "pause" || a === "resume") togglePause();
+    else if (a === "finish") { autoSave = true; stopRecording(); }
+  }
+  var autoSave = false;   // "Save and finish" saves as soon as the recording is wrapped up
+
   function finishRecording() {
+    var secs = ((paused ? pausedAt : Date.now()) - startedAt - pausedTotal) / 1000;
     paused = false;
-    $("recBtn").dataset.paused = "false";
-    $("pauseBtn").textContent = "Pause";
     clearInterval(tickId);
+    stopMeter();
     releaseScreen();
     if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
     blob = new Blob(chunks, { type: mime });
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = URL.createObjectURL(blob);
+    if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
     $("player").src = objectUrl;
     var dl = $("dlLink");
     dl.href = objectUrl;
     dl.download = fileName();
     dl.hidden = false;
     setMode("review");
+    if (autoSave) {
+      autoSave = false;
+      if (secs < 3 || !heardVoice) {   // nothing worth keeping: do not put an empty file in the Drive folder
+        again();
+        setStatus("That recording was empty or very short, so it was not saved. Press Record when you are ready to try again.", "err");
+        return;
+      }
+      save();
+      return;
+    }
     setStatus("Press play to listen. If you like it, press Save my answer.");
   }
 
@@ -692,7 +871,7 @@
   async function save() {
     if (!blob) return;
     if (UPLOAD_URL.indexOf("PASTE_") === 0) {
-      setStatus("Saving is not set up yet. Press Keep a copy on my phone for now.", "err");
+      setStatus("Saving is not set up yet. Press Save a copy to my phone for now.", "err");
       return;
     }
     setMode("saving");
@@ -722,7 +901,7 @@
       renderPast();
     } catch (e) {
       setMode("review");
-      setStatus("That did not save. Check your internet and press Save my answer again. Your recording is still here.", "err");
+      setStatus("That did not save. Check your internet and try saving again. Your recording is still here.", "err");
     }
   }
 
@@ -733,14 +912,11 @@
     $("dlLink").hidden = true;
     $("timer").textContent = "0:00";
     setMode("idle");
-    setStatus("Press the red button and start talking.");
+    setStatus("Press the red Record button and start talking.");
   }
 
-  $("recBtn").addEventListener("click", function () {
-    if (mode === "recording") stopRecording();
-    else if (mode === "idle") startRecording();
-    else if (mode === "saved") again();
-  });
+  $("recBtn").addEventListener("click", function () { doAct(this.dataset.act); });
+  $("stopBtn").addEventListener("click", function () { doAct(this.dataset.act); });
   $("helpBtn").addEventListener("click", function () {
     if (mode === "recording" || mode === "saving") return;
     showHelp = true;
@@ -754,12 +930,39 @@
     render();
     window.scrollTo({ top: 0 });
   });
-  $("pauseBtn").addEventListener("click", togglePause);
   $("saveBtn").addEventListener("click", save);
   $("againBtn").addEventListener("click", again);
 
+  // Stop a recording that is in progress and throw it away without saving.
+  function discardRecording() {
+    if (mode === "recording") {
+      if (recorder) {
+        recorder.onstop = null;
+        recorder.ondataavailable = null;   // a late chunk from the thrown-away take must not leak into the next one
+        try { if (recorder.state !== "inactive") recorder.stop(); } catch (e) {}
+      }
+      paused = false;
+      clearInterval(tickId);
+      stopMeter();
+      hidePreview();
+      releaseScreen();
+      if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    }
+    autoSave = false;
+    again();
+  }
+  // Ask first if moving on would lose a recording she has not saved.
+  function okToLeave() {
+    if (mode === "saving") return false;
+    if (mode === "recording" || mode === "review") {
+      if (!window.confirm("Your recording has not been saved yet. Throw it away and move on?")) return false;
+      discardRecording();
+    }
+    return true;
+  }
+
   $("skipBtn").addEventListener("click", function () {
-    if (mode === "recording" || mode === "saving") return;
+    if (!okToLeave()) return;
     if (mode !== "idle") again();
     state.skipped[day] = true;
     persist();
@@ -769,7 +972,7 @@
 
   // "later" puts this question back after the next 10 she has not answered; "end" puts it last.
   function moveCurrent(kind) {
-    if (mode === "recording" || mode === "saving") return;
+    if (!okToLeave()) return;
     if (mode !== "idle") again();
     var o = state.order, from = o.indexOf(day);
     if (from < 0) return;

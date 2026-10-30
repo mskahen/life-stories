@@ -500,6 +500,12 @@
     for (var i = 1; i <= total; i++) if (!seen[i]) o.push(i);
     state.order = o;
   })();
+  // One-time reset (2026-10-30): questions 3 to 5 were saved with no sound, so ask them again. Runs once per phone.
+  if (!state.redo345) {
+    [3, 4, 5].forEach(function (id) { delete state.done[id]; delete state.skipped[id]; });
+    state.redo345 = true;
+    persist();
+  }
   var posOf = function (id) { return state.order.indexOf(id) + 1; };
   function persist() {
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
